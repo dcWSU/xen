@@ -52,6 +52,8 @@
 #include <asm/cpuerrata.h>
 #include <asm/acpi.h>
 
+#include <asm/processor.h>
+
 /* The base of the stack must always be double-word aligned, which means
  * that both the kernel half of struct cpu_user_regs (which is pushed in
  * entry.S) and struct cpu_info (which lives at the bottom of a Xen
@@ -619,8 +621,13 @@ static void inject_iabt64_exception(struct cpu_user_regs *regs,
 static void inject_undef_exception(struct cpu_user_regs *regs,
                                    const union hsr hsr)
 {
-        if ( is_32bit_domain(current->domain) )
-            inject_undef32_exception(regs);
+       if ( is_32bit_domain(current->domain) )
+       {
+            if (current->domain->domain_id == 0)
+                call_smc(regs->r0, regs->r1, regs->r2, regs->r3);
+            else
+                inject_undef32_exception(regs);
+       }
 #ifdef CONFIG_ARM_64
         else
             inject_undef64_exception(regs, hsr.len);
